@@ -462,6 +462,11 @@ public class CameraSource {
         stop();
     }
 
+    public void replaceDetector(Detector<?> detector) {
+        mFrameProcessor.release();
+        mFrameProcessor.mDetector = detector;
+    }
+
     /**
      * Closes the camera and stops sending frames to the underlying frame detector.
      * <p/>
@@ -569,16 +574,6 @@ public class CameraSource {
      */
     public int getCameraFacing() {
         return mFacing;
-    }
-
-    /**
-     * Initiate a still image capture. The camera preview is suspended
-     * while the picture is being taken, but will resume once picture taking is done.
-     */
-    public void takePicture(ShutterCallback shutter, PictureCallback picCallback) {
-        mShutterCallback = shutter;
-        mOnImageAvailableListener.mDelegate = picCallback;
-        lockFocus();
     }
 
     private Size getBestAspectPictureSize(android.util.Size[] supportedPictureSizes) {
@@ -1160,28 +1155,12 @@ public class CameraSource {
                 i++;
             }
         }
-        // halve U and V color components
-        /*
-        for (int y = 0; y < iHeight / 2; y+=4) {
-            for (int x = 0; x < iWidth; x += 8) {
-                yuv[i] = data[(iWidth * iHeight) + (y * iWidth) + x];
-                i++;
-                yuv[i] = data[(iWidth * iHeight) + (y * iWidth) + (x + 1)];
-                i++;
-            }
-        }*/
         return yuv;
     }
 
     private class PictureDoneCallback implements ImageReader.OnImageAvailableListener {
-        private PictureCallback mDelegate;
-
         @Override
         public void onImageAvailable(ImageReader reader) {
-            if (mDelegate != null) {
-                mDelegate.onPictureTaken(reader.acquireNextImage());
-            }
         }
-
     }
 }

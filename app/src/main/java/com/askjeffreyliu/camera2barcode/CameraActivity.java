@@ -74,7 +74,21 @@ public class CameraActivity extends AppCompatActivity {
 
             @Override
             public void onPageSelected(int position) {
+                stopDetector();
+                previewBarcodeDetector = new BarcodeDetector.Builder(CameraActivity.this)
+                        .setBarcodeFormats(getBarcodeType(position))
+                        .build();
 
+                if (previewBarcodeDetector.isOperational()) {
+                    BarcodeTrackerFactory barcodeFactory = new BarcodeTrackerFactory(mGraphicOverlay);
+                    previewBarcodeDetector.setProcessor(new MultiProcessor.Builder<>(barcodeFactory).build());
+                } else {
+                    showToast("BARCODE DETECTION NOT AVAILABLE");
+                }
+
+                mCamera2Source.replaceDetector(previewBarcodeDetector);
+
+                startCameraSource();
             }
 
             @Override
@@ -181,6 +195,7 @@ public class CameraActivity extends AppCompatActivity {
             startCameraSource();
         } else {
             showToast(getString(R.string.camera_error));
+            finish();
         }
     }
 
@@ -212,6 +227,18 @@ public class CameraActivity extends AppCompatActivity {
                 showToast(getString(R.string.request_permission));
                 finish();
             }
+        }
+    }
+
+    private int getBarcodeType(int position) {
+        switch (position) {
+            default:
+            case 0:
+                return Barcode.QR_CODE;
+            case 1:
+                return Barcode.DATA_MATRIX;
+            case 2:
+                return Barcode.PDF417;
         }
     }
 }

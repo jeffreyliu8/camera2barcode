@@ -21,7 +21,6 @@ import android.graphics.SurfaceTexture;
 import android.support.annotation.RequiresPermission;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.SurfaceHolder;
 import android.view.TextureView;
 import android.view.ViewGroup;
 
@@ -112,30 +111,6 @@ public class CameraSourcePreview extends ViewGroup {
         }
     }
 
-    private final SurfaceHolder.Callback mSurfaceViewListener = new SurfaceHolder.Callback() {
-        @Override
-        public void surfaceCreated(SurfaceHolder surface) {
-            mSurfaceAvailable = true;
-            mOverlay.bringToFront();
-            try {
-                startIfReady();
-            } catch (SecurityException se) {
-                Log.e(TAG, "Do not have permission to start the camera", se);
-            } catch (IOException e) {
-                Log.e(TAG, "Could not start camera source.", e);
-            }
-        }
-
-        @Override
-        public void surfaceDestroyed(SurfaceHolder surface) {
-            mSurfaceAvailable = false;
-        }
-
-        @Override
-        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        }
-    };
-
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height) {
@@ -205,17 +180,4 @@ public class CameraSourcePreview extends ViewGroup {
             Log.e(TAG, "Could not start camera source.", e);
         }
     }
-
-//    private boolean isPortraitMode() {
-//        int orientation = mContext.getResources().getConfiguration().orientation;
-//        if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-//            return false;
-//        }
-//        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-//            return true;
-//        }
-//
-//        Log.d(TAG, "isPortraitMode returning false by default");
-//        return false;
-//    }
 }
