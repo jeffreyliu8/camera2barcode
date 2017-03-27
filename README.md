@@ -1,5 +1,7 @@
 # camera2barcode
-QR Code, Data Matrix, PDF-417
+A demo app for camera2 api on QR Code, Data Matrix, PDF-417
+
+![Output sample](https://github.com/jeffreyliu8/camera2barcode/blob/master/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png)
 
 Requirements
 --------------
