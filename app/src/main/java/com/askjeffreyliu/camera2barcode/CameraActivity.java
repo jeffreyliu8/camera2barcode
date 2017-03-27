@@ -38,6 +38,8 @@ import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.vision.MultiProcessor;
 import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
+import com.rd.PageIndicatorView;
+import com.rd.animation.AnimationType;
 
 import java.io.IOException;
 
@@ -96,6 +98,10 @@ public class CameraActivity extends AppCompatActivity {
 
             }
         });
+
+        PageIndicatorView pageIndicatorView = (PageIndicatorView) findViewById(R.id.pageIndicatorView);
+        pageIndicatorView.setViewPager(mViewPager);
+        pageIndicatorView.setAnimationType(AnimationType.WORM);
 
         hideSystemUI();
     }

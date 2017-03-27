@@ -15,8 +15,10 @@
 -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:attrs="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@android:color/black"
     android:keepScreenOn="true">
 
     <com.askjeffreyliu.camera2barcode.camera.CameraSourcePreview
@@ -35,5 +37,13 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+    <com.rd.PageIndicatorView
+        android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:id="@+id/pageIndicatorView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        attrs:piv_viewPager="@+id/container" />
 
 </RelativeLayout>
