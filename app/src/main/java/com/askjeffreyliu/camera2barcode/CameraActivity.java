@@ -17,6 +17,7 @@
 package com.askjeffreyliu.camera2barcode;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.camera2.CaptureRequest;
 import android.os.Bundle;
@@ -35,6 +36,7 @@ import com.askjeffreyliu.camera2barcode.camera.GraphicOverlay;
 import com.askjeffreyliu.camera2barcode.pager.SectionsPagerAdapter;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.vision.Detector;
 import com.google.android.gms.vision.MultiProcessor;
 import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
@@ -55,10 +57,19 @@ public class CameraActivity extends AppCompatActivity {
     private BarcodeDetector previewBarcodeDetector = null;
     private GraphicOverlay mGraphicOverlay;
 
+    private Detector.Processor<Barcode> detectorProcessor;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera);
+
+        // a cute permission request screen
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            startActivity(new Intent(this, PermissionCheckActivity.class));
+            finish();
+            return;
+        }
 
         mPreview = (CameraSourcePreview) findViewById(R.id.preview);
         mGraphicOverlay = (GraphicOverlay) findViewById(R.id.barcodeOverlay);
@@ -82,8 +93,7 @@ public class CameraActivity extends AppCompatActivity {
                         .build();
 
                 if (previewBarcodeDetector.isOperational()) {
-                    BarcodeTrackerFactory barcodeFactory = new BarcodeTrackerFactory(mGraphicOverlay);
-                    previewBarcodeDetector.setProcessor(new MultiProcessor.Builder<>(barcodeFactory).build());
+                    previewBarcodeDetector.setProcessor(detectorProcessor);
                 } else {
                     showToast("BARCODE DETECTION NOT AVAILABLE");
                 }
@@ -102,6 +112,9 @@ public class CameraActivity extends AppCompatActivity {
         PageIndicatorView pageIndicatorView = (PageIndicatorView) findViewById(R.id.pageIndicatorView);
         pageIndicatorView.setViewPager(mViewPager);
         pageIndicatorView.setAnimationType(AnimationType.WORM);
+
+        BarcodeTrackerFactory barcodeFactory = new BarcodeTrackerFactory(mGraphicOverlay);
+        detectorProcessor = new MultiProcessor.Builder<>(barcodeFactory).build();
     }
 
     // This snippet hides the system bars.
@@ -182,8 +195,7 @@ public class CameraActivity extends AppCompatActivity {
                 .build();
 
         if (previewBarcodeDetector.isOperational()) {
-            BarcodeTrackerFactory barcodeFactory = new BarcodeTrackerFactory(mGraphicOverlay);
-            previewBarcodeDetector.setProcessor(new MultiProcessor.Builder<>(barcodeFactory).build());
+            previewBarcodeDetector.setProcessor(detectorProcessor);
         } else {
             showToast("BARCODE DETECTION NOT AVAILABLE");
         }
