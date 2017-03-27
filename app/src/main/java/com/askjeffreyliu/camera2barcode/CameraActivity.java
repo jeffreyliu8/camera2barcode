@@ -102,8 +102,6 @@ public class CameraActivity extends AppCompatActivity {
         PageIndicatorView pageIndicatorView = (PageIndicatorView) findViewById(R.id.pageIndicatorView);
         pageIndicatorView.setViewPager(mViewPager);
         pageIndicatorView.setAnimationType(AnimationType.WORM);
-
-        hideSystemUI();
     }
 
     // This snippet hides the system bars.
@@ -137,7 +135,7 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
-
+        hideSystemUI();
         if (checkGooglePlayAvailability()) {
             requestPermissionThenOpenCamera();
         }
