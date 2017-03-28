@@ -3,6 +3,9 @@ A demo app for camera2 api on QR Code, Data Matrix, PDF-417
 
 ![Output sample](https://github.com/jeffreyliu8/camera2barcode/blob/master/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png)
 
+<p>You can download this app from Play Store:</p>
+<a href="https://play.google.com/store/apps/details?id=com.askjeffreyliu.camera2barcode"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/images/apps/en-play-badge-border.png" width="300" /></a>
+
 Requirements
 --------------
 * Handheld scanner capable of scanning 3 types of barcodes (QR Code, Data Matrix, PDF-417)
