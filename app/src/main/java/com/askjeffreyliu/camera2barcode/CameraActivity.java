@@ -43,7 +43,9 @@ import com.askjeffreyliu.camera2barcode.utils.Utils;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.zxing.Result;
+import com.google.zxing.datamatrix.DataMatrixReader;
 import com.google.zxing.multi.qrcode.QRCodeMultiReader;
+import com.google.zxing.pdf417.PDF417Reader;
 import com.rd.PageIndicatorView;
 import com.rd.animation.AnimationType;
 
@@ -93,20 +95,8 @@ public class CameraActivity extends AppCompatActivity {
 
             @Override
             public void onPageSelected(int position) {
-//                stopDetector();
-//                previewBarcodeDetector = new BarcodeDetector.Builder(CameraActivity.this)
-//                        .setBarcodeFormats(getBarcodeType(position))
-//                        .build();
-//
-//                if (previewBarcodeDetector.isOperational()) {
-//                    previewBarcodeDetector.setProcessor(detectorProcessor);
-//                } else {
-//                    showToast("BARCODE DETECTION NOT AVAILABLE");
-//                }
-//
-//                mCamera2Source.replaceDetector(previewBarcodeDetector);
-//
-//                startCameraSource();
+                mGraphicOverlay.clear();
+                mCamera2Source.setReaderType(position);
             }
 
             @Override
@@ -132,9 +122,9 @@ public class CameraActivity extends AppCompatActivity {
         // doesn't resize when the system bars hide and show.
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+//                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+//                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+//                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_FULLSCREEN
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
     }
@@ -192,8 +182,10 @@ public class CameraActivity extends AppCompatActivity {
 
     private void createCameraSourceBack() {
         QRCodeMultiReader mQrReader = new QRCodeMultiReader();
+        DataMatrixReader dataMatrixReader = new DataMatrixReader();
+        PDF417Reader pdf417Reader = new PDF417Reader();
 
-        mCamera2Source = new CameraSource.Builder(this, mQrReader)
+        mCamera2Source = new CameraSource.Builder(this, mQrReader, dataMatrixReader, pdf417Reader)
                 .setFocusMode(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
                 .setFlashMode(CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH)
                 .setFacing(CameraSource.CAMERA_FACING_BACK)
@@ -253,7 +245,7 @@ public class CameraActivity extends AppCompatActivity {
 
 
     @Subscribe//(threadMode = ThreadMode.MAIN)
-    public void onMessageEvent(MessageEvent event) {
+    public void onMessageEvent(MultiResultEvent event) {
         if (event != null && event.results != null && event.results.length > 0) {
             mGraphicOverlay.clear();
 
@@ -262,11 +254,8 @@ public class CameraActivity extends AppCompatActivity {
                 ArrayList<Point> pointArrayList = new ArrayList<>();
                 for (int j = 0; j < r.getResultPoints().length; j++) {
 
-
                     final float x = r.getResultPoints()[j].getX();
                     final float y = r.getResultPoints()[j].getY();
-                    //Logger.d(r.getResultPoints().length + " " + x + " " + y);
-
 
                     final float scaledX = 1080 - (y / 1280 * 1795);
                     final float scaledY = x / 768 * 1080;
@@ -278,9 +267,6 @@ public class CameraActivity extends AppCompatActivity {
                     @Override
                     public void draw(Canvas canvas) {
                         canvas.drawRect(rect, paint);
-                        //canvas.drawCircle(1080 - (y / 1280 * 1795), x / 768 * 1080, 15, paint);
-                        //canvas.drawText("" + y, y, x, paint);
-                        //canvas.drawText("" + x, y, x + 100, paint);
                     }
                 });
 

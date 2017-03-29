@@ -46,16 +46,20 @@ import android.util.Range;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
-import com.askjeffreyliu.camera2barcode.MessageEvent;
+import com.askjeffreyliu.camera2barcode.MultiResultEvent;
 import com.askjeffreyliu.camera2barcode.camera2.AutoFitTextureView;
 import com.askjeffreyliu.camera2barcode.utils.Utils;
 import com.google.android.gms.common.images.Size;
 import com.google.zxing.BinaryBitmap;
+import com.google.zxing.ChecksumException;
+import com.google.zxing.FormatException;
 import com.google.zxing.NotFoundException;
 import com.google.zxing.PlanarYUVLuminanceSource;
 import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.datamatrix.DataMatrixReader;
 import com.google.zxing.multi.qrcode.QRCodeMultiReader;
+import com.google.zxing.pdf417.PDF417Reader;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -99,6 +103,8 @@ public class CameraSource {
     private static final double maxRatioTolerance = 0.1;
     private Context mContext;
     private QRCodeMultiReader mQrReader;
+    private DataMatrixReader matrixReader;
+    private PDF417Reader pdf417Reader;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     private boolean cameraStarted = false;
     private int mSensorOrientation;
@@ -285,11 +291,13 @@ public class CameraSource {
          * Creates a camera source builder with the supplied context and detector.  Camera preview
          * images will be streamed to the associated detector upon starting the camera source.
          */
-        public Builder(Context context, QRCodeMultiReader mQrReader) {
+        public Builder(Context context, QRCodeMultiReader mQrReader, DataMatrixReader dataMatrixReader, PDF417Reader pdf417Reader) {
             if (context == null) {
                 throw new IllegalArgumentException("No context supplied.");
             }
             mCameraSource.mQrReader = mQrReader;
+            mCameraSource.matrixReader = dataMatrixReader;
+            mCameraSource.pdf417Reader = pdf417Reader;
             mCameraSource.mContext = context;
         }
 
@@ -365,6 +373,10 @@ public class CameraSource {
     public void release() {
         mFrameProcessor.release();
         stop();
+    }
+
+    public void setReaderType(int readerType) {
+        mFrameProcessor.setReadType(readerType);
     }
 
     /**
@@ -792,7 +804,7 @@ public class CameraSource {
         // This lock guards all of the member variables below.
         private final Object mLock = new Object();
         private boolean mActive = true;
-
+        private int readType = 0; // 0 is qr, 1 is data matrix, 2 is pdf
 
         private BinaryBitmap mPendingFrameData;
 
@@ -807,8 +819,10 @@ public class CameraSource {
         @SuppressLint("Assert")
         void release() {
             assert (mProcessingThread.getState() == State.TERMINATED);
-//            mDetector.release();
-//            mDetector = null;
+        }
+
+        public void setReadType(int readType) {
+            this.readType = readType;
         }
 
         /**
@@ -852,7 +866,8 @@ public class CameraSource {
          */
         @Override
         public void run() {
-            Result rawResult[] = null;
+            Result multiRawResults[] = null;
+
             while (true) {
                 synchronized (mLock) {
                     while (mActive && (mPendingFrameData == null)) {
@@ -874,13 +889,27 @@ public class CameraSource {
                         return;
                     }
 
-                    //Log.d(TAG, "run() called " + mPendingFrameId + mPendingTimeMillis);
-
                     try {
-                        rawResult = mQrReader.decodeMultiple(mPendingFrameData);
+                        switch (readType) {
+                            default:
+                            case 0:
+                                multiRawResults = mQrReader.decodeMultiple(mPendingFrameData);
+                                break;
+                            case 1:
+                                multiRawResults = new Result[1];
+                                multiRawResults[0] = matrixReader.decode(mPendingFrameData);
+                                break;
+                            case 2:
+                                multiRawResults = pdf417Reader.decodeMultiple(mPendingFrameData);
+                                break;
+                        }
+
                     } catch (NotFoundException e) {
-                        // not found
-                        //EventBus.getDefault().post(new ClearEvent());
+
+                    } catch (FormatException e) {
+                       // Logger.e("format ex " + e.toString());
+                    } catch (ChecksumException e) {
+                       // Logger.e("check sum " + e.toString());
                     }
 
                     // We need to clear mPendingFrameData to ensure that this buffer isn't
@@ -891,12 +920,12 @@ public class CameraSource {
                 // The code below needs to run outside of synchronization, because this will allow
                 // the camera to add pending frame(s) while we are running detection on the current
                 // frame.
-                onQRCodeRead(rawResult);
-                rawResult = null;
+
+                onMultiCodeRead(multiRawResults);
+                multiRawResults = null;
             }
         }
     }
-
 
     private class PictureDoneCallback implements ImageReader.OnImageAvailableListener {
         @Override
@@ -904,10 +933,10 @@ public class CameraSource {
         }
     }
 
-    public void onQRCodeRead(final Result[] rawResult) {
-        if (rawResult != null && rawResult.length > 0) {
-            Log.d(TAG, "onQRCodeRead() called");
-            EventBus.getDefault().post(new MessageEvent(rawResult));
+    private void onMultiCodeRead(final Result[] rawResult) {
+        if (rawResult != null && rawResult.length > 0 && rawResult[0] != null) {
+            //Log.d(TAG, "onMultiCodeRead() called with: rawResult = [" + rawResult[0].getBarcodeFormat().toString() + "]");
+            EventBus.getDefault().post(new MultiResultEvent(rawResult));
         }
     }
 }
