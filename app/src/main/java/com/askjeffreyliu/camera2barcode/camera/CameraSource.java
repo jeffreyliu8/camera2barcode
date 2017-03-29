@@ -38,7 +38,6 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresPermission;
 import android.support.v4.content.ContextCompat;
@@ -47,12 +46,18 @@ import android.util.Range;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
+import com.askjeffreyliu.camera2barcode.MessageEvent;
 import com.askjeffreyliu.camera2barcode.camera2.AutoFitTextureView;
 import com.askjeffreyliu.camera2barcode.utils.Utils;
 import com.google.android.gms.common.images.Size;
-import com.google.android.gms.vision.Detector;
-import com.google.android.gms.vision.Frame;
-import com.google.android.gms.vision.barcode.Barcode;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.PlanarYUVLuminanceSource;
+import com.google.zxing.Result;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.multi.qrcode.QRCodeMultiReader;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.io.IOException;
 import java.lang.Thread.State;
@@ -93,6 +98,7 @@ public class CameraSource {
     private static final String TAG = "OpenCameraSource";
     private static final double maxRatioTolerance = 0.1;
     private Context mContext;
+    private QRCodeMultiReader mQrReader;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     private boolean cameraStarted = false;
     private int mSensorOrientation;
@@ -186,7 +192,6 @@ public class CameraSource {
     private FrameProcessingRunnable mFrameProcessor;
 
 
-
     /**
      * An {@link ImageReader} that handles live preview.
      */
@@ -216,7 +221,18 @@ public class CameraSource {
             if (mImage == null) {
                 return;
             }
-            mFrameProcessor.setNextFrame(convertYUV420888ToNV21(mImage));
+
+            ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
+            byte[] data = new byte[buffer.remaining()];
+            buffer.get(data);
+            int width = mImage.getWidth();
+            int height = mImage.getHeight();
+            //Logger.d("wh is " + width + height);
+
+            PlanarYUVLuminanceSource source = new PlanarYUVLuminanceSource(data, width, height, 0, 0, width, height, false);
+            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+
+            mFrameProcessor.setNextFrame(bitmap);
             mImage.close();
         }
     };
@@ -262,22 +278,18 @@ public class CameraSource {
      * Builder for configuring and creating an associated camera source.
      */
     public static class Builder {
-        private final Detector<Barcode> mDetector;
+
         private CameraSource mCameraSource = new CameraSource();
 
         /**
          * Creates a camera source builder with the supplied context and detector.  Camera preview
          * images will be streamed to the associated detector upon starting the camera source.
          */
-        public Builder(Context context, Detector<Barcode> detector) {
+        public Builder(Context context, QRCodeMultiReader mQrReader) {
             if (context == null) {
                 throw new IllegalArgumentException("No context supplied.");
             }
-            if (detector == null) {
-                throw new IllegalArgumentException("No detector supplied.");
-            }
-
-            mDetector = detector;
+            mCameraSource.mQrReader = mQrReader;
             mCameraSource.mContext = context;
         }
 
@@ -307,7 +319,7 @@ public class CameraSource {
          * Creates an instance of the camera source.
          */
         public CameraSource build() {
-            mCameraSource.mFrameProcessor = mCameraSource.new FrameProcessingRunnable(mDetector);
+            mCameraSource.mFrameProcessor = mCameraSource.new FrameProcessingRunnable();
             return mCameraSource;
         }
     }
@@ -353,11 +365,6 @@ public class CameraSource {
     public void release() {
         mFrameProcessor.release();
         stop();
-    }
-
-    public void replaceDetector(Detector<Barcode> detector) {
-        mFrameProcessor.release();
-        mFrameProcessor.mDetector = detector;
     }
 
     /**
@@ -781,20 +788,16 @@ public class CameraSource {
      * received frame will immediately start on the same thread.
      */
     private class FrameProcessingRunnable implements Runnable {
-        private Detector<Barcode> mDetector;
-        private long mStartTimeMillis = SystemClock.elapsedRealtime();
 
         // This lock guards all of the member variables below.
         private final Object mLock = new Object();
         private boolean mActive = true;
 
-        // These pending variables hold the state associated with the new frame awaiting processing.
-        private long mPendingTimeMillis;
-        private int mPendingFrameId = 0;
-        private byte[] mPendingFrameData;
 
-        FrameProcessingRunnable(Detector<Barcode> detector) {
-            mDetector = detector;
+        private BinaryBitmap mPendingFrameData;
+
+        FrameProcessingRunnable() {
+
         }
 
         /**
@@ -804,8 +807,8 @@ public class CameraSource {
         @SuppressLint("Assert")
         void release() {
             assert (mProcessingThread.getState() == State.TERMINATED);
-            mDetector.release();
-            mDetector = null;
+//            mDetector.release();
+//            mDetector = null;
         }
 
         /**
@@ -821,16 +824,11 @@ public class CameraSource {
         /**
          * Sets the frame data received from the camera.
          */
-        void setNextFrame(byte[] data) {
+        void setNextFrame(BinaryBitmap data) {
             synchronized (mLock) {
                 if (mPendingFrameData != null) {
                     mPendingFrameData = null;
                 }
-
-                // Timestamp and frame ID are maintained here, which will give downstream code some
-                // idea of the timing of frames received and when frames were dropped along the way.
-                mPendingTimeMillis = SystemClock.elapsedRealtime() - mStartTimeMillis;
-                mPendingFrameId++;
                 mPendingFrameData = data;
 
                 // Notify the processor thread if it is waiting on the next frame (see below).
@@ -854,8 +852,7 @@ public class CameraSource {
          */
         @Override
         public void run() {
-            Frame outputFrame;
-
+            Result rawResult[] = null;
             while (true) {
                 synchronized (mLock) {
                     while (mActive && (mPendingFrameData == null)) {
@@ -879,12 +876,12 @@ public class CameraSource {
 
                     //Log.d(TAG, "run() called " + mPendingFrameId + mPendingTimeMillis);
 
-                    outputFrame = new Frame.Builder()
-                            .setImageData(ByteBuffer.wrap(quarterNV21(mPendingFrameData, mPreviewSize.getWidth(), mPreviewSize.getHeight())), mPreviewSize.getWidth() / 4, mPreviewSize.getHeight() / 4, ImageFormat.NV21)
-                            .setId(mPendingFrameId)
-                            .setTimestampMillis(mPendingTimeMillis)
-                            .setRotation(getDetectorOrientation(mSensorOrientation))
-                            .build();
+                    try {
+                        rawResult = mQrReader.decodeMultiple(mPendingFrameData);
+                    } catch (NotFoundException e) {
+                        // not found
+                        //EventBus.getDefault().post(new ClearEvent());
+                    }
 
                     // We need to clear mPendingFrameData to ensure that this buffer isn't
                     // recycled back to the camera before we are done using that data.
@@ -894,67 +891,23 @@ public class CameraSource {
                 // The code below needs to run outside of synchronization, because this will allow
                 // the camera to add pending frame(s) while we are running detection on the current
                 // frame.
-
-                try {
-                    mDetector.receiveFrame(outputFrame);
-                } catch (Throwable t) {
-                    Log.e(TAG, "Exception thrown from receiver.", t);
-                }
+                onQRCodeRead(rawResult);
+                rawResult = null;
             }
         }
     }
 
-    private int getDetectorOrientation(int sensorOrientation) {
-        switch (sensorOrientation) {
-            case 0:
-                return Frame.ROTATION_0;
-            case 90:
-                return Frame.ROTATION_90;
-            case 180:
-                return Frame.ROTATION_180;
-            case 270:
-                return Frame.ROTATION_270;
-            case 360:
-                return Frame.ROTATION_0;
-            default:
-                return Frame.ROTATION_90;
-        }
-    }
-
-    private byte[] convertYUV420888ToNV21(Image imgYUV420) {
-        // Converting YUV_420_888 data to NV21.
-        byte[] data = null;
-        try {
-            ByteBuffer buffer0 = imgYUV420.getPlanes()[0].getBuffer();
-            ByteBuffer buffer2 = imgYUV420.getPlanes()[2].getBuffer();
-            int buffer0_size = buffer0.remaining();
-            int buffer2_size = buffer2.remaining();
-            data = new byte[buffer0_size + buffer2_size];
-            buffer0.get(data, 0, buffer0_size);
-            buffer2.get(data, buffer0_size, buffer2_size);
-        } catch (IllegalStateException e) {
-            Log.e(TAG, "convertYUV420888ToNV21: ", e);
-        }
-        return data;
-    }
-
-    private byte[] quarterNV21(byte[] data, int iWidth, int iHeight) {
-        // Reduce to quarter size the NV21 frame
-        byte[] yuv = new byte[iWidth / 4 * iHeight / 4 * 3 / 2];
-        // halve yuma
-        int i = 0;
-        for (int y = 0; y < iHeight; y += 4) {
-            for (int x = 0; x < iWidth; x += 4) {
-                yuv[i] = data[y * iWidth + x];
-                i++;
-            }
-        }
-        return yuv;
-    }
 
     private class PictureDoneCallback implements ImageReader.OnImageAvailableListener {
         @Override
         public void onImageAvailable(ImageReader reader) {
+        }
+    }
+
+    public void onQRCodeRead(final Result[] rawResult) {
+        if (rawResult != null && rawResult.length > 0) {
+            Log.d(TAG, "onQRCodeRead() called");
+            EventBus.getDefault().post(new MessageEvent(rawResult));
         }
     }
 }

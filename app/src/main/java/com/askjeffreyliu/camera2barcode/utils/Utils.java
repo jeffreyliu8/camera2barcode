@@ -2,11 +2,14 @@ package com.askjeffreyliu.camera2barcode.utils;
 
 import android.content.Context;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.WindowManager;
 
 import com.google.android.gms.common.images.Size;
+
+import java.util.ArrayList;
 
 public class Utils {
 
@@ -43,5 +46,41 @@ public class Utils {
             size[i] = new Size(sizes[i].getWidth(), sizes[i].getHeight());
         }
         return size;
+    }
+
+    public static Rect createRect(ArrayList<Point> list) {
+        if (list == null || list.size() < 3)
+            return null;
+        int left = list.get(0).x;
+        int right = list.get(0).x;
+        int top = list.get(0).y;
+        int bottom = list.get(0).y;
+
+        for (int i = 1; i < list.size(); i++) {
+            if (list.get(i).x < left) {
+                left = list.get(i).x;
+            }
+            if (list.get(i).x > right) {
+                right = list.get(i).x;
+            }
+            if (list.get(i).y < top) {
+                top = list.get(i).y;
+            }
+            if (list.get(i).y > bottom) {
+                bottom = list.get(i).y;
+            }
+        }
+
+//        float scaleFactor = 1.5f;
+//        int midHoz = (right + left) / 2;
+//        int distanceHozHalf = (right - left) / 2;
+//        int midVer = (bottom + top) / 2;
+//        int distanceVerHalf = (top - bottom) / 2;
+//        right = midHoz + (int) (distanceHozHalf * scaleFactor);
+//        left = midHoz - (int) (distanceHozHalf * scaleFactor);
+//        top = midVer + (int) (distanceVerHalf * scaleFactor);
+//        bottom = midVer - (int) (distanceVerHalf * scaleFactor);
+
+        return new Rect(left, top, right, bottom);
     }
 }

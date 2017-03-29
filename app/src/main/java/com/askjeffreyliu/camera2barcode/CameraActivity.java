@@ -19,6 +19,11 @@ package com.askjeffreyliu.camera2barcode;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Point;
+import android.graphics.Rect;
 import android.hardware.camera2.CaptureRequest;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -34,16 +39,19 @@ import com.askjeffreyliu.camera2barcode.camera.CameraSource;
 import com.askjeffreyliu.camera2barcode.camera.CameraSourcePreview;
 import com.askjeffreyliu.camera2barcode.camera.GraphicOverlay;
 import com.askjeffreyliu.camera2barcode.pager.SectionsPagerAdapter;
+import com.askjeffreyliu.camera2barcode.utils.Utils;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.vision.Detector;
-import com.google.android.gms.vision.MultiProcessor;
-import com.google.android.gms.vision.barcode.Barcode;
-import com.google.android.gms.vision.barcode.BarcodeDetector;
+import com.google.zxing.Result;
+import com.google.zxing.multi.qrcode.QRCodeMultiReader;
 import com.rd.PageIndicatorView;
 import com.rd.animation.AnimationType;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class CameraActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -54,10 +62,8 @@ public class CameraActivity extends AppCompatActivity {
 
     // COMMON TO BOTH CAMERAS
     private CameraSourcePreview mPreview;
-    private BarcodeDetector previewBarcodeDetector = null;
     private GraphicOverlay mGraphicOverlay;
-
-    private Detector.Processor<Barcode> detectorProcessor;
+    private Paint paint;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,20 +93,20 @@ public class CameraActivity extends AppCompatActivity {
 
             @Override
             public void onPageSelected(int position) {
-                stopDetector();
-                previewBarcodeDetector = new BarcodeDetector.Builder(CameraActivity.this)
-                        .setBarcodeFormats(getBarcodeType(position))
-                        .build();
-
-                if (previewBarcodeDetector.isOperational()) {
-                    previewBarcodeDetector.setProcessor(detectorProcessor);
-                } else {
-                    showToast("BARCODE DETECTION NOT AVAILABLE");
-                }
-
-                mCamera2Source.replaceDetector(previewBarcodeDetector);
-
-                startCameraSource();
+//                stopDetector();
+//                previewBarcodeDetector = new BarcodeDetector.Builder(CameraActivity.this)
+//                        .setBarcodeFormats(getBarcodeType(position))
+//                        .build();
+//
+//                if (previewBarcodeDetector.isOperational()) {
+//                    previewBarcodeDetector.setProcessor(detectorProcessor);
+//                } else {
+//                    showToast("BARCODE DETECTION NOT AVAILABLE");
+//                }
+//
+//                mCamera2Source.replaceDetector(previewBarcodeDetector);
+//
+//                startCameraSource();
             }
 
             @Override
@@ -113,8 +119,10 @@ public class CameraActivity extends AppCompatActivity {
         pageIndicatorView.setViewPager(mViewPager);
         pageIndicatorView.setAnimationType(AnimationType.WORM);
 
-        BarcodeTrackerFactory barcodeFactory = new BarcodeTrackerFactory(mGraphicOverlay);
-        detectorProcessor = new MultiProcessor.Builder<>(barcodeFactory).build();
+        paint = new Paint();
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(15f);
+        paint.setColor(Color.GREEN);
     }
 
     // This snippet hides the system bars.
@@ -158,14 +166,7 @@ public class CameraActivity extends AppCompatActivity {
     public void onPause() {
         super.onPause();
         stopCameraSource();
-        stopDetector();
-    }
 
-    private void stopDetector() {
-        if (previewBarcodeDetector != null) {
-            previewBarcodeDetector.release();
-            previewBarcodeDetector = null;
-        }
     }
 
     private boolean checkGooglePlayAvailability() {
@@ -190,17 +191,9 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private void createCameraSourceBack() {
-        previewBarcodeDetector = new BarcodeDetector.Builder(this)
-                .setBarcodeFormats(Barcode.QR_CODE)
-                .build();
+        QRCodeMultiReader mQrReader = new QRCodeMultiReader();
 
-        if (previewBarcodeDetector.isOperational()) {
-            previewBarcodeDetector.setProcessor(detectorProcessor);
-        } else {
-            showToast("BARCODE DETECTION NOT AVAILABLE");
-        }
-
-        mCamera2Source = new CameraSource.Builder(this, previewBarcodeDetector)
+        mCamera2Source = new CameraSource.Builder(this, mQrReader)
                 .setFocusMode(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
                 .setFlashMode(CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH)
                 .setFacing(CameraSource.CAMERA_FACING_BACK)
@@ -246,15 +239,60 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
-    private int getBarcodeType(int position) {
-        switch (position) {
-            default:
-            case 0:
-                return Barcode.QR_CODE;
-            case 1:
-                return Barcode.DATA_MATRIX;
-            case 2:
-                return Barcode.PDF417;
+    @Override
+    public void onStart() {
+        super.onStart();
+        EventBus.getDefault().register(this);
+    }
+
+    @Override
+    public void onStop() {
+        EventBus.getDefault().unregister(this);
+        super.onStop();
+    }
+
+
+    @Subscribe//(threadMode = ThreadMode.MAIN)
+    public void onMessageEvent(MessageEvent event) {
+        if (event != null && event.results != null && event.results.length > 0) {
+            mGraphicOverlay.clear();
+
+            for (int i = 0; i < event.results.length; i++) {
+                Result r = event.results[i];
+                ArrayList<Point> pointArrayList = new ArrayList<>();
+                for (int j = 0; j < r.getResultPoints().length; j++) {
+
+
+                    final float x = r.getResultPoints()[j].getX();
+                    final float y = r.getResultPoints()[j].getY();
+                    //Logger.d(r.getResultPoints().length + " " + x + " " + y);
+
+
+                    final float scaledX = 1080 - (y / 1280 * 1795);
+                    final float scaledY = x / 768 * 1080;
+                    pointArrayList.add(new Point((int) scaledX, (int) scaledY));
+                }
+                final Rect rect = Utils.createRect(pointArrayList);
+
+                mGraphicOverlay.add(new GraphicOverlay.Graphic(mGraphicOverlay) {
+                    @Override
+                    public void draw(Canvas canvas) {
+                        canvas.drawRect(rect, paint);
+                        //canvas.drawCircle(1080 - (y / 1280 * 1795), x / 768 * 1080, 15, paint);
+                        //canvas.drawText("" + y, y, x, paint);
+                        //canvas.drawText("" + x, y, x + 100, paint);
+                    }
+                });
+
+
+//                Handler handler = new Handler();
+//                handler.postDelayed(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        mGraphicOverlay.clear();
+//                    }
+//                }, 100);
+            }
         }
     }
 }

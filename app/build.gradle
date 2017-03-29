@@ -34,6 +34,13 @@ dependencies {
     compile "com.android.support:support-v4:$GoogleLibVersion"
     compile "com.google.android.gms:play-services-vision:$GooglePlayVersion"
 
+    compile 'com.journeyapps:zxing-android-embedded:3.4.0@aar'
+    compile 'com.google.zxing:core:3.3.0'
+
+    compile 'com.orhanobut:logger:1.15'
+
     compile 'com.romandanylyk:pageindicatorview:0.1.2'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
+
+    compile 'org.greenrobot:eventbus:3.0.0'
 }

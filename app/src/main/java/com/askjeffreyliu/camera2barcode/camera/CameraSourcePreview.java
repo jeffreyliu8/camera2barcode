@@ -101,7 +101,7 @@ public class CameraSourcePreview extends ViewGroup {
                     int max = Math.max(size.getWidth(), size.getHeight());
                     // FOR GRAPHIC OVERLAY, THE PREVIEW SIZE WAS REDUCED TO QUARTER
                     // IN ORDER TO PREVENT CPU OVERLOAD
-                    mOverlay.setCameraInfo(min / 4, max / 4, mCamera2Source.getCameraFacing());
+                    mOverlay.setCameraInfo(min / 4, max / 4);
                     mOverlay.clear();
                 } else {
                     stop();

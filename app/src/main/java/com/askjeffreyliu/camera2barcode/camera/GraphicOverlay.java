@@ -49,7 +49,7 @@ public class GraphicOverlay<T extends GraphicOverlay.Graphic> extends View {
     private float mWidthScaleFactor = 1.0f;
     private int mPreviewHeight;
     private float mHeightScaleFactor = 1.0f;
-    private int mFacing = CameraSource.CAMERA_FACING_BACK;
+
     private Set<T> mGraphics = new HashSet<>();
 
     /**
@@ -98,11 +98,7 @@ public class GraphicOverlay<T extends GraphicOverlay.Graphic> extends View {
          * system.
          */
         public float translateX(float x) {
-            if (mOverlay.mFacing == CameraSource.CAMERA_FACING_FRONT) {
-                return mOverlay.getWidth() - scaleX(x);
-            } else {
-                return scaleX(x);
-            }
+            return scaleX(x);
         }
 
         /**
@@ -180,11 +176,10 @@ public class GraphicOverlay<T extends GraphicOverlay.Graphic> extends View {
      * Sets the camera attributes for size and facing direction, which informs how to transform
      * image coordinates later.
      */
-    public void setCameraInfo(int previewWidth, int previewHeight, int facing) {
+    public void setCameraInfo(int previewWidth, int previewHeight) {
         synchronized (mLock) {
             mPreviewWidth = previewWidth;
             mPreviewHeight = previewHeight;
-            mFacing = facing;
         }
         postInvalidate();
     }
