@@ -45,8 +45,9 @@ import com.askjeffreyliu.camera2barcode.utils.Utils;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatReader;
 import com.google.zxing.Result;
-import com.google.zxing.datamatrix.DataMatrixReader;
+import com.google.zxing.multi.GenericMultipleBarcodeReader;
 import com.google.zxing.multi.qrcode.QRCodeMultiReader;
 import com.google.zxing.pdf417.PDF417Reader;
 import com.rd.PageIndicatorView;
@@ -204,7 +205,7 @@ public class CameraActivity extends AppCompatActivity {
 
     private void createCameraSourceBack() {
         QRCodeMultiReader mQrReader = new QRCodeMultiReader();
-        DataMatrixReader dataMatrixReader = new DataMatrixReader();
+        GenericMultipleBarcodeReader dataMatrixReader = new GenericMultipleBarcodeReader(new MultiFormatReader());
         PDF417Reader pdf417Reader = new PDF417Reader();
 
         mCamera2Source = new CameraSource.Builder(this, mQrReader, dataMatrixReader, pdf417Reader)

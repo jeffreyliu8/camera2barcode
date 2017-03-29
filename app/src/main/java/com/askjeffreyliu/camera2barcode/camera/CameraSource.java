@@ -50,14 +50,14 @@ import com.askjeffreyliu.camera2barcode.MultiResultEvent;
 import com.askjeffreyliu.camera2barcode.camera2.AutoFitTextureView;
 import com.askjeffreyliu.camera2barcode.utils.Utils;
 import com.google.android.gms.common.images.Size;
+import com.google.zxing.BarcodeFormat;
 import com.google.zxing.BinaryBitmap;
-import com.google.zxing.ChecksumException;
-import com.google.zxing.FormatException;
+import com.google.zxing.DecodeHintType;
 import com.google.zxing.NotFoundException;
 import com.google.zxing.PlanarYUVLuminanceSource;
 import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
-import com.google.zxing.datamatrix.DataMatrixReader;
+import com.google.zxing.multi.GenericMultipleBarcodeReader;
 import com.google.zxing.multi.qrcode.QRCodeMultiReader;
 import com.google.zxing.pdf417.PDF417Reader;
 
@@ -70,6 +70,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -103,11 +104,12 @@ public class CameraSource {
     private static final double maxRatioTolerance = 0.1;
     private Context mContext;
     private QRCodeMultiReader mQrReader;
-    private DataMatrixReader matrixReader;
+    private GenericMultipleBarcodeReader matrixReader;
     private PDF417Reader pdf417Reader;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     private boolean cameraStarted = false;
-    private int mSensorOrientation;
+    private int imageWidth, imageHeight;
+    private Hashtable<DecodeHintType, Object> hints = new Hashtable<>();
 
     /**
      * A reference to the opened {@link CameraDevice}.
@@ -184,11 +186,6 @@ public class CameraSource {
      * Whether the current camera device supports Flash or not.
      */
     private boolean mFlashSupported;
-
-    /**
-     * worstFPS
-     */
-    private Range<Integer> worstFps;
 
     /**
      * Dedicated thread and associated runnable for calling into the detector with frames, as the
@@ -278,7 +275,7 @@ public class CameraSource {
          * Creates a camera source builder with the supplied context and detector.  Camera preview
          * images will be streamed to the associated detector upon starting the camera source.
          */
-        public Builder(Context context, QRCodeMultiReader mQrReader, DataMatrixReader dataMatrixReader, PDF417Reader pdf417Reader) {
+        public Builder(Context context, QRCodeMultiReader mQrReader, GenericMultipleBarcodeReader dataMatrixReader, PDF417Reader pdf417Reader) {
             if (context == null) {
                 throw new IllegalArgumentException("No context supplied.");
             }
@@ -286,6 +283,9 @@ public class CameraSource {
             mCameraSource.matrixReader = dataMatrixReader;
             mCameraSource.pdf417Reader = pdf417Reader;
             mCameraSource.mContext = context;
+
+            mCameraSource.hints.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
+            mCameraSource.hints.put(DecodeHintType.POSSIBLE_FORMATS, Arrays.asList(BarcodeFormat.DATA_MATRIX));
         }
 
         public Builder setFocusMode(int mode) {
@@ -634,7 +634,7 @@ public class CameraSource {
             // coordinate.
             int displayRotation = mDisplayOrientation;
             //noinspection ConstantConditions
-            mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+            int mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
             boolean swappedDimensions = false;
             switch (displayRotation) {
                 case Surface.ROTATION_0:
@@ -696,10 +696,6 @@ public class CameraSource {
             Range<Integer>[] availableFpsRange = characteristics.
                     get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
 
-            // Pick FPS range with highest max value, tiebreak on higher min value
-            worstFps = availableFpsRange[0];
-            Log.d(TAG, "worst fps is " + worstFps);
-
             configureTransform(width, height);
 
             manager.openCamera(mCameraId, mStateCallback, mBackgroundHandler);
@@ -754,8 +750,6 @@ public class CameraSource {
                                 if (mFlashSupported) {
                                     mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, mFlashMode);
                                 }
-
-                                //mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, worstFps);
 
                                 // Finally, we start displaying the camera preview.
                                 mPreviewRequest = mPreviewRequestBuilder.build();
@@ -900,8 +894,7 @@ public class CameraSource {
                                 multiRawResults = mQrReader.decodeMultiple(mPendingFrameData);
                                 break;
                             case 1:
-                                multiRawResults = new Result[1];
-                                multiRawResults[0] = matrixReader.decode(mPendingFrameData);
+                                multiRawResults = matrixReader.decodeMultiple(mPendingFrameData, hints);
                                 break;
                             case 2:
                                 multiRawResults = pdf417Reader.decodeMultiple(mPendingFrameData);
@@ -910,10 +903,6 @@ public class CameraSource {
 
                     } catch (NotFoundException e) {
 
-                    } catch (FormatException e) {
-                        // Logger.e("format ex " + e.toString());
-                    } catch (ChecksumException e) {
-                        // Logger.e("check sum " + e.toString());
                     }
 
                     // We need to clear mPendingFrameData to ensure that this buffer isn't
@@ -930,8 +919,6 @@ public class CameraSource {
             }
         }
     }
-
-    int imageWidth, imageHeight;
 
     private void onMultiCodeRead(final Result[] rawResult) {
         if (rawResult != null && rawResult.length > 0 && rawResult[0] != null) {
