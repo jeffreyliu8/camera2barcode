@@ -39,6 +39,7 @@ import android.widget.Toast;
 import com.askjeffreyliu.camera2barcode.camera.CameraSource;
 import com.askjeffreyliu.camera2barcode.camera.CameraSourcePreview;
 import com.askjeffreyliu.camera2barcode.camera.GraphicOverlay;
+import com.askjeffreyliu.camera2barcode.pager.PlaceholderFragment;
 import com.askjeffreyliu.camera2barcode.pager.SectionsPagerAdapter;
 import com.askjeffreyliu.camera2barcode.utils.Utils;
 import com.google.android.gms.common.ConnectionResult;
@@ -63,7 +64,8 @@ public class CameraActivity extends AppCompatActivity {
 
     // CAMERA VERSION TWO DECLARATIONS
     private CameraSource mCamera2Source = null;
-
+    private ViewPager mViewPager;
+    private SectionsPagerAdapter mSectionsPagerAdapter;
     // COMMON TO BOTH CAMERAS
     private CameraSourcePreview mPreview;
     private GraphicOverlay mGraphicOverlay;
@@ -74,8 +76,11 @@ public class CameraActivity extends AppCompatActivity {
         public void run() {
             if (mGraphicOverlay != null)
                 mGraphicOverlay.clear();
+            getPageSetOverlay(true);
         }
     };
+
+    ArrayList<PlaceholderFragment> pages = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,6 +88,10 @@ public class CameraActivity extends AppCompatActivity {
         setContentView(R.layout.activity_camera);
 
         handler = new Handler();
+
+        for (int i = 0; i < 3; i++) {
+            pages.add(PlaceholderFragment.newInstance(i));
+        }
 
         // a cute permission request screen
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -94,10 +103,11 @@ public class CameraActivity extends AppCompatActivity {
         mPreview = (CameraSourcePreview) findViewById(R.id.preview);
         mGraphicOverlay = (GraphicOverlay) findViewById(R.id.barcodeOverlay);
 
-        SectionsPagerAdapter mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
+        mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager(), pages);
 
         // Set up the ViewPager with the sections adapter.
-        ViewPager mViewPager = (ViewPager) findViewById(R.id.container);
+        mViewPager = (ViewPager) findViewById(R.id.container);
+        mViewPager.setOffscreenPageLimit(pages.size());
         mViewPager.setAdapter(mSectionsPagerAdapter);
         mViewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
             @Override
@@ -286,7 +296,26 @@ public class CameraActivity extends AppCompatActivity {
                         canvas.drawRect(rect, paint);
                     }
                 });
+
+                CameraActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        getPageSetOverlay(false);
+                    }
+                });
                 handler.postDelayed(runnable, 100);
+            }
+        }
+    }
+
+    private void getPageSetOverlay(boolean show) {
+        if (mViewPager != null && mSectionsPagerAdapter != null) {
+            for (int i = 0; i < pages.size(); i++) {
+                if (mViewPager.getCurrentItem() != i) {
+                    pages.get(i).showOverlay(true);
+                } else {
+                    pages.get(i).showOverlay(show);
+                }
             }
         }
     }

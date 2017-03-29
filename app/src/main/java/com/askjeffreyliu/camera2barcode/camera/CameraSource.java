@@ -227,8 +227,10 @@ public class CameraSource {
             if (mImage == null) {
                 return;
             }
-            imageWidth = mImage.getHeight(); // swapping
-            imageHeight = mImage.getWidth();// swapping
+            if (imageWidth == 0 || imageHeight == 0) {
+                imageWidth = mImage.getHeight(); // swapping
+                imageHeight = mImage.getWidth();// swapping
+            }
             mFrameProcessor.setNextFrame(mImage);
             mImage.close();
         }
