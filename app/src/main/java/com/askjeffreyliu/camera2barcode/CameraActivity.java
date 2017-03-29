@@ -26,6 +26,7 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.hardware.camera2.CaptureRequest;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -42,6 +43,7 @@ import com.askjeffreyliu.camera2barcode.pager.SectionsPagerAdapter;
 import com.askjeffreyliu.camera2barcode.utils.Utils;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.zxing.BarcodeFormat;
 import com.google.zxing.Result;
 import com.google.zxing.datamatrix.DataMatrixReader;
 import com.google.zxing.multi.qrcode.QRCodeMultiReader;
@@ -66,11 +68,21 @@ public class CameraActivity extends AppCompatActivity {
     private CameraSourcePreview mPreview;
     private GraphicOverlay mGraphicOverlay;
     private Paint paint;
+    private Handler handler;
+    private Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mGraphicOverlay != null)
+                mGraphicOverlay.clear();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera);
+
+        handler = new Handler();
 
         // a cute permission request screen
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -248,20 +260,25 @@ public class CameraActivity extends AppCompatActivity {
     public void onMessageEvent(MultiResultEvent event) {
         if (event != null && event.results != null && event.results.length > 0) {
             mGraphicOverlay.clear();
+            handler.removeCallbacks(runnable);
 
             for (int i = 0; i < event.results.length; i++) {
                 Result r = event.results[i];
                 ArrayList<Point> pointArrayList = new ArrayList<>();
                 for (int j = 0; j < r.getResultPoints().length; j++) {
+                    float x, y;
+                    try {
+                        x = r.getResultPoints()[j].getX();
+                        y = r.getResultPoints()[j].getY();
+                    } catch (NullPointerException e) {
+                        return;
+                    }
 
-                    final float x = r.getResultPoints()[j].getX();
-                    final float y = r.getResultPoints()[j].getY();
-
-                    final float scaledX = 1080 - (y / 1280 * 1795);
-                    final float scaledY = x / 768 * 1080;
+                    final float scaledX = x / event.width * mGraphicOverlay.getWidth();
+                    final float scaledY = y / event.height * mGraphicOverlay.getHeight();
                     pointArrayList.add(new Point((int) scaledX, (int) scaledY));
                 }
-                final Rect rect = Utils.createRect(pointArrayList);
+                final Rect rect = Utils.createRect(pointArrayList, r.getBarcodeFormat() == BarcodeFormat.QR_CODE);
 
                 mGraphicOverlay.add(new GraphicOverlay.Graphic(mGraphicOverlay) {
                     @Override
@@ -269,15 +286,7 @@ public class CameraActivity extends AppCompatActivity {
                         canvas.drawRect(rect, paint);
                     }
                 });
-
-
-//                Handler handler = new Handler();
-//                handler.postDelayed(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        mGraphicOverlay.clear();
-//                    }
-//                }, 100);
+                handler.postDelayed(runnable, 100);
             }
         }
     }

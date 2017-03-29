@@ -8,8 +8,12 @@ import com.google.zxing.Result;
 
 public class MultiResultEvent {
     public Result[] results;
+    public int width;
+    public int height;
 
-    public MultiResultEvent(Result[] results) {
+    public MultiResultEvent(Result[] results, int width, int height) {
         this.results = results;
+        this.width = width;
+        this.height = height;
     }
 }

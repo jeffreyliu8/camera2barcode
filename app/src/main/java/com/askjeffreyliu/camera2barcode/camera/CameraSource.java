@@ -227,27 +227,12 @@ public class CameraSource {
             if (mImage == null) {
                 return;
             }
-
-            ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
-            byte[] data = new byte[buffer.remaining()];
-            buffer.get(data);
-            int width = mImage.getWidth();
-            int height = mImage.getHeight();
-            //Logger.d("wh is " + width + height);
-
-            PlanarYUVLuminanceSource source = new PlanarYUVLuminanceSource(data, width, height, 0, 0, width, height, false);
-            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
-
-            mFrameProcessor.setNextFrame(bitmap);
+            imageWidth = mImage.getHeight(); // swapping
+            imageHeight = mImage.getWidth();// swapping
+            mFrameProcessor.setNextFrame(mImage);
             mImage.close();
         }
     };
-
-    /**
-     * This is a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
-     * still image is ready to be saved.
-     */
-    private PictureDoneCallback mOnImageAvailableListener = new PictureDoneCallback();
 
     /**
      * {@link CameraDevice.StateCallback} is called when {@link CameraDevice} changes its state.
@@ -838,12 +823,29 @@ public class CameraSource {
         /**
          * Sets the frame data received from the camera.
          */
-        void setNextFrame(BinaryBitmap data) {
+        void setNextFrame(Image mImage) {
             synchronized (mLock) {
                 if (mPendingFrameData != null) {
                     mPendingFrameData = null;
                 }
-                mPendingFrameData = data;
+
+                ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
+                byte[] data = new byte[buffer.remaining()];
+                buffer.get(data);
+                int width = mImage.getWidth();
+                int height = mImage.getHeight();
+
+                byte[] rotatedData = new byte[data.length];
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < width; x++)
+                        rotatedData[x * height + height - y - 1] = data[x + y * width];
+                }
+                int tmp = width;
+                width = height;
+                height = tmp;
+
+                PlanarYUVLuminanceSource source = new PlanarYUVLuminanceSource(rotatedData, width, height, 0, 0, width, height, false);
+                mPendingFrameData = new BinaryBitmap(new HybridBinarizer(source));
 
                 // Notify the processor thread if it is waiting on the next frame (see below).
                 mLock.notifyAll();
@@ -907,9 +909,9 @@ public class CameraSource {
                     } catch (NotFoundException e) {
 
                     } catch (FormatException e) {
-                       // Logger.e("format ex " + e.toString());
+                        // Logger.e("format ex " + e.toString());
                     } catch (ChecksumException e) {
-                       // Logger.e("check sum " + e.toString());
+                        // Logger.e("check sum " + e.toString());
                     }
 
                     // We need to clear mPendingFrameData to ensure that this buffer isn't
@@ -927,16 +929,12 @@ public class CameraSource {
         }
     }
 
-    private class PictureDoneCallback implements ImageReader.OnImageAvailableListener {
-        @Override
-        public void onImageAvailable(ImageReader reader) {
-        }
-    }
+    int imageWidth, imageHeight;
 
     private void onMultiCodeRead(final Result[] rawResult) {
         if (rawResult != null && rawResult.length > 0 && rawResult[0] != null) {
             //Log.d(TAG, "onMultiCodeRead() called with: rawResult = [" + rawResult[0].getBarcodeFormat().toString() + "]");
-            EventBus.getDefault().post(new MultiResultEvent(rawResult));
+            EventBus.getDefault().post(new MultiResultEvent(rawResult, imageWidth, imageHeight));
         }
     }
 }
