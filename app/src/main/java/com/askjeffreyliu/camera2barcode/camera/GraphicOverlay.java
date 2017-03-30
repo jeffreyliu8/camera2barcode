@@ -21,9 +21,7 @@ import android.util.AttributeSet;
 import android.view.View;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.Vector;
 
 /**
  * A view which renders a series of custom graphics to be overlayed on top of an associated preview
@@ -36,12 +34,6 @@ import java.util.Vector;
  *
  * Associated {@link Graphic} items should use the following methods to convert to view coordinates
  * for the graphics that are drawn:
- * <ol>
- * <li>{@link Graphic#scaleX(float)} and {@link Graphic#scaleY(float)} adjust the size of the
- * supplied value from the preview scale to the view scale.</li>
- * <li>{@link Graphic#translateX(float)} and {@link Graphic#translateY(float)} adjust the coordinate
- * from the preview's coordinate system to the view coordinate system.</li>
- * </ol>
  */
 public class GraphicOverlay<T extends GraphicOverlay.Graphic> extends View {
     private final Object mLock = new Object();
@@ -64,54 +56,7 @@ public class GraphicOverlay<T extends GraphicOverlay.Graphic> extends View {
             mOverlay = overlay;
         }
 
-        /**
-         * Draw the graphic on the supplied canvas.  Drawing should use the following methods to
-         * convert to view coordinates for the graphics that are drawn:
-         * <ol>
-         * <li>{@link Graphic#scaleX(float)} and {@link Graphic#scaleY(float)} adjust the size of
-         * the supplied value from the preview scale to the view scale.</li>
-         * <li>{@link Graphic#translateX(float)} and {@link Graphic#translateY(float)} adjust the
-         * coordinate from the preview's coordinate system to the view coordinate system.</li>
-         * </ol>
-         *
-         * @param canvas drawing canvas
-         */
         public abstract void draw(Canvas canvas);
-
-        /**
-         * Adjusts a horizontal value of the supplied value from the preview scale to the view
-         * scale.
-         */
-        public float scaleX(float horizontal) {
-            return horizontal * mOverlay.mWidthScaleFactor;
-        }
-
-        /**
-         * Adjusts a vertical value of the supplied value from the preview scale to the view scale.
-         */
-        public float scaleY(float vertical) {
-            return vertical * mOverlay.mHeightScaleFactor;
-        }
-
-        /**
-         * Adjusts the x coordinate from the preview's coordinate system to the view coordinate
-         * system.
-         */
-        public float translateX(float x) {
-            return scaleX(x);
-        }
-
-        /**
-         * Adjusts the y coordinate from the preview's coordinate system to the view coordinate
-         * system.
-         */
-        public float translateY(float y) {
-            return scaleY(y);
-        }
-
-        public void postInvalidate() {
-            mOverlay.postInvalidate();
-        }
     }
 
     public GraphicOverlay(Context context, AttributeSet attrs) {
@@ -138,39 +83,6 @@ public class GraphicOverlay<T extends GraphicOverlay.Graphic> extends View {
         postInvalidate();
     }
 
-    /**
-     * Removes a graphic from the overlay.
-     */
-    public void remove(T graphic) {
-        synchronized (mLock) {
-            mGraphics.remove(graphic);
-        }
-        postInvalidate();
-    }
-
-    /**
-     * Returns a copy (as a list) of the set of all active graphics.
-     * @return list of all active graphics.
-     */
-    public List<T> getGraphics() {
-        synchronized (mLock) {
-            return new Vector(mGraphics);
-        }
-    }
-
-    /**
-     * Returns the horizontal scale factor.
-     */
-    public float getWidthScaleFactor() {
-        return mWidthScaleFactor;
-    }
-
-    /**
-     * Returns the vertical scale factor.
-     */
-    public float getHeightScaleFactor() {
-        return mHeightScaleFactor;
-    }
 
     /**
      * Sets the camera attributes for size and facing direction, which informs how to transform

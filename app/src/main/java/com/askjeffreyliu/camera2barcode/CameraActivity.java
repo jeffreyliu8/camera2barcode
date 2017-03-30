@@ -71,6 +71,7 @@ public class CameraActivity extends AppCompatActivity {
     private CameraSourcePreview mPreview;
     private GraphicOverlay mGraphicOverlay;
     private Paint paint;
+    private Paint textPaint;
     private Handler handler;
     private Runnable runnable = new Runnable() {
         @Override
@@ -134,8 +135,12 @@ public class CameraActivity extends AppCompatActivity {
 
         paint = new Paint();
         paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(15f);
+        paint.setStrokeWidth(5f);
         paint.setColor(Color.GREEN);
+
+        textPaint = new Paint();
+        textPaint.setColor(Color.GREEN);
+        textPaint.setTextSize(36.0f);
     }
 
     // This snippet hides the system bars.
@@ -274,7 +279,7 @@ public class CameraActivity extends AppCompatActivity {
             handler.removeCallbacks(runnable);
 
             for (int i = 0; i < event.results.length; i++) {
-                Result r = event.results[i];
+                final Result r = event.results[i];
                 ArrayList<Point> pointArrayList = new ArrayList<>();
                 for (int j = 0; j < r.getResultPoints().length; j++) {
                     float x, y;
@@ -295,6 +300,7 @@ public class CameraActivity extends AppCompatActivity {
                     @Override
                     public void draw(Canvas canvas) {
                         canvas.drawRect(rect, paint);
+                        canvas.drawText(r.getText(), rect.left, rect.bottom, textPaint);
                     }
                 });
 

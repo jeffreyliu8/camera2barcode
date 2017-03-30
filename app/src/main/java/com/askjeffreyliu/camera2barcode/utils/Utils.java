@@ -48,7 +48,7 @@ public class Utils {
         return size;
     }
 
-    public static Rect createRect(ArrayList<Point> list,boolean isQRcode) {
+    public static Rect createRect(ArrayList<Point> list, boolean isQRcode) {
         if (list == null || list.size() < 3)
             return null;
         int left = list.get(0).x;
@@ -71,7 +71,7 @@ public class Utils {
             }
         }
 
-        if(isQRcode){
+        if (isQRcode) {
             float scaleFactor = 1.5f;
             int midHoz = (right + left) / 2;
             int distanceHozHalf = (right - left) / 2;
@@ -82,7 +82,11 @@ public class Utils {
             top = midVer + (int) (distanceVerHalf * scaleFactor);
             bottom = midVer - (int) (distanceVerHalf * scaleFactor);
         }
-
-        return new Rect(left, top, right, bottom);
+        Rect result = new Rect(left, top, right, bottom);
+        result.bottom = bottom;
+        result.top = top;
+        result.left = left;
+        result.right = right;
+        return result;
     }
 }
