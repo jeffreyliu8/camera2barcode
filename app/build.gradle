@@ -1,46 +1,46 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    compileSdkVersion 27
+
     defaultConfig {
         applicationId "com.askjeffreyliu.camera2barcode"
-        minSdkVersion 25
-        targetSdkVersion 25
+        minSdkVersion 21
+        targetSdkVersion 27
         versionCode 6
         versionName "1.0.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
         release {
-            minifyEnabled false;
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 }
 
-def GoogleLibVersion = '25.3.1'
-def GooglePlayVersion = '10.2.1'
+def GoogleLibVersion = '27.1.1'
+def GooglePlayVersion = '15.0.2'
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-//    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+//    androidTestimplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
 //        exclude group: 'com.android.support', module: 'support-annotations'
 //    })
-    //    testCompile 'junit:junit:4.12'
+    //    testimplementation 'junit:junit:4.12'
 
-    compile "com.android.support:appcompat-v7:$GoogleLibVersion"
-    compile "com.android.support:design:$GoogleLibVersion"
-    compile "com.android.support:support-v4:$GoogleLibVersion"
-    compile "com.google.android.gms:play-services-vision:$GooglePlayVersion"
+    implementation "com.android.support:appcompat-v7:$GoogleLibVersion"
+    implementation "com.android.support:design:$GoogleLibVersion"
+    implementation "com.android.support:support-v4:$GoogleLibVersion"
+    implementation "com.google.android.gms:play-services-vision:$GooglePlayVersion"
 
-    compile 'com.journeyapps:zxing-android-embedded:3.4.0@aar'
-    compile 'com.google.zxing:core:3.3.0'
+    implementation 'com.journeyapps:zxing-android-embedded:3.5.0@aar'
+    implementation 'com.google.zxing:core:3.3.0'
 
-    //compile 'com.orhanobut:logger:1.15'
+    //implementation 'com.orhanobut:logger:1.15'
 
-    compile 'com.romandanylyk:pageindicatorview:0.1.2'
-    compile 'com.android.support.constraint:constraint-layout:1.0.2'
+    implementation 'com.romandanylyk:pageindicatorview:1.0.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.1'
 
-    compile 'org.greenrobot:eventbus:3.0.0'
+    implementation 'org.greenrobot:eventbus:3.1.1'
 }

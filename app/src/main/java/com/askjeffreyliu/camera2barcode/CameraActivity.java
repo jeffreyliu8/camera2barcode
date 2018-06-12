@@ -51,7 +51,7 @@ import com.google.zxing.multi.GenericMultipleBarcodeReader;
 import com.google.zxing.multi.qrcode.QRCodeMultiReader;
 import com.google.zxing.pdf417.PDF417Reader;
 import com.rd.PageIndicatorView;
-import com.rd.animation.AnimationType;
+import com.rd.animation.type.AnimationType;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
