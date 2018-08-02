@@ -18,7 +18,3 @@ Requirements
 ![Output sample](https://github.com/jeffreyliu8/camera2barcode/blob/master/qr.jpg)
 ![Output sample](https://github.com/jeffreyliu8/camera2barcode/blob/master/data_matrix.jpg)
 ![Output sample](https://github.com/jeffreyliu8/camera2barcode/blob/master/pdf.jpg)
-
-Developed By
--------
-Jeffrey Liu - <jeffreyliu8@gmail.com>
